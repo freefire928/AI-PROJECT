@@ -1,98 +1,63 @@
 import streamlit as st
-import google.generativeai as genai
-from PIL import Image
-import io
+from groq import Groq
 
-# --- Page Configuration ---
+# --- Page Config ---
 st.set_page_config(page_title="NEXUS | Abhishek OS", page_icon="🌐", layout="wide")
 
-st.title("🌐 NEXUS : The Intelligent Core")
-st.caption("Developed by Abhishek | Multi-Model Stable Mode")
+st.title("🌐 NEXUS : Hyper-Speed Core")
+st.caption("Developed by Abhishek | Powered by Groq LPU™")
 st.markdown("---")
 
-# --- API Key Setup ---
-if "GEMINI_KEY" in st.secrets:
-    api_key = st.secrets["GEMINI_KEY"]
+# --- API Key Fetch (Secrets se) ---
+# Pehle check karega ki Streamlit Secrets mein key hai ya nahi
+if "GROQ_API_KEY" in st.secrets:
+    api_key = st.secrets["GROQ_API_KEY"]
 else:
-    api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
+    # Backup: Agar secrets mein nahi hai toh sidebar se lega
+    api_key = st.sidebar.text_input("Enter Groq API Key", type="password")
 
 if api_key:
-    genai.configure(api_key=api_key)
-    
-    # Nexus Navigation
-    st.sidebar.title("NEXUS Control Panel")
-    mode = st.sidebar.radio("Interface Mode:", ["Neural Chat", "Visual Analysis"])
-    
-    # Modern Personality
-    instruction = (
-        "Tumhara naam 'NEXUS' hai. Tum Abhishek OS ke official Intelligent Core ho. "
-        "Tumhe Abhishek ne develop kiya hai. Tumhara tone sharp aur efficient hai. "
-        "Har jawab ke end mein 'NEXUS | Abhishek OS' likho."
-    )
+    try:
+        client = Groq(api_key=api_key)
+        
+        # NEXUS Persona
+        system_prompt = (
+            "Tumhara naam 'NEXUS' hai. Tum Abhishek OS ke Intelligent Core ho. "
+            "Tumhe Abhishek ne develop kiya hai. Tumhara tone futuristic, sharp aur alpha hai. "
+            "Har jawab ke end mein 'NEXUS | Abhishek OS' likho."
+        )
 
-    # --- 404 Fix: Automatic Model Discovery ---
-    if "active_model_name" not in st.session_state:
-        try:
-            # Sabse pehle stable model try karte hain
-            test_model = genai.GenerativeModel('gemini-1.5-flash')
-            test_model.generate_content("ping")
-            st.session_state.active_model_name = 'gemini-1.5-flash'
-        except Exception:
-            try:
-                # Agar fail hua toh available models ki list check karte hain
-                models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
-                # 'models/gemini-1.5-flash' dhoondho
-                best_fit = next((m for m in models if "1.5-flash" in m), models[0])
-                st.session_state.active_model_name = best_fit
-            except Exception:
-                st.session_state.active_model_name = 'gemini-pro' # Last fallback
-
-    # Model Initialize
-    model = genai.GenerativeModel(
-        model_name=st.session_state.active_model_name,
-        system_instruction=instruction
-    )
-
-    # --- Mode 1: Neural Chat ---
-    if mode == "Neural Chat":
-        st.subheader("🧠 Neural Interface")
         if "messages" not in st.session_state:
             st.session_state.messages = []
 
+        # Display Chat History
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
-        if prompt := st.chat_input("Accessing Nexus... Enter command:"):
+        # User Input
+        if prompt := st.chat_input("Command bhejo, Abhishek..."):
             st.session_state.messages.append({"role": "user", "content": prompt})
             with st.chat_message("user"):
                 st.markdown(prompt)
 
             with st.chat_message("assistant"):
                 try:
-                    with st.spinner('Processing...'):
-                        response = model.generate_content(prompt)
-                        st.markdown(response.text)
-                        st.session_state.messages.append({"role": "assistant", "content": response.text})
+                    with st.spinner('NEXUS is processing at light speed...'):
+                        # Using llama-3.3-70b for best intelligence and speed
+                        chat_completion = client.chat.completions.create(
+                            messages=[
+                                {"role": "system", "content": system_prompt},
+                                *[{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+                            ],
+                            model="llama-3.3-70b-versatile",
+                        )
+                        res_text = chat_completion.choices[0].message.content
+                        st.markdown(res_text)
+                        st.session_state.messages.append({"role": "assistant", "content": res_text})
                 except Exception as e:
-                    st.error(f"Nexus Error: {e}")
-
-    # --- Mode 2: Visual Analysis ---
-    elif mode == "Visual Analysis":
-        st.subheader("📸 Visual Diagnostic Scanner")
-        uploaded_file = st.file_uploader("Upload System Capture", type=["jpg", "jpeg", "png"])
-        if uploaded_file:
-            image = Image.open(uploaded_file)
-            st.image(image, caption='Target Source', use_container_width=True)
-            if st.button("Initialize Scan ⚡"):
-                try:
-                    with st.spinner('Scanning...'):
-                        img_byte_arr = io.BytesIO()
-                        image.save(img_byte_arr, format=image.format)
-                        contents = ["Analyze this capture.", {'mime_type': uploaded_file.type, 'data': img_byte_arr.getvalue()}]
-                        response = model.generate_content(contents=contents)
-                        st.success(response.text)
-                except Exception as e:
-                    st.error(f"Scan Failed: {e}")
+                    st.error(f"Nexus Sync Error: {e}")
+    except Exception as e:
+        st.error(f"Initialization Failed: {e}")
 else:
-    st.warning("Nexus requires an API Key in Sidebar or Secrets.")
+    st.warning("Nexus is waiting for the Secret Key. Update it in Streamlit Secrets.")
