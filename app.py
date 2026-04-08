@@ -7,7 +7,7 @@ import io
 st.set_page_config(page_title="NEXUS | Abhishek OS", page_icon="🌐", layout="wide")
 
 st.title("🌐 NEXUS : The Intelligent Core")
-st.caption("Developed by Abhishek | High-Limit Mode Enabled 🚀")
+st.caption("Developed by Abhishek | Multi-Model Stable Mode")
 st.markdown("---")
 
 # --- API Key Setup ---
@@ -30,10 +30,26 @@ if api_key:
         "Har jawab ke end mein 'NEXUS | Abhishek OS' likho."
     )
 
-    # --- High Limit Model Selection ---
-    # Hum 'gemini-1.5-flash' use kar rahe hain kyunki iski limit 1500 RPM tak ho sakti hai
+    # --- 404 Fix: Automatic Model Discovery ---
+    if "active_model_name" not in st.session_state:
+        try:
+            # Sabse pehle stable model try karte hain
+            test_model = genai.GenerativeModel('gemini-1.5-flash')
+            test_model.generate_content("ping")
+            st.session_state.active_model_name = 'gemini-1.5-flash'
+        except Exception:
+            try:
+                # Agar fail hua toh available models ki list check karte hain
+                models = [m.name for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+                # 'models/gemini-1.5-flash' dhoondho
+                best_fit = next((m for m in models if "1.5-flash" in m), models[0])
+                st.session_state.active_model_name = best_fit
+            except Exception:
+                st.session_state.active_model_name = 'gemini-pro' # Last fallback
+
+    # Model Initialize
     model = genai.GenerativeModel(
-        model_name='gemini-1.5-flash',
+        model_name=st.session_state.active_model_name,
         system_instruction=instruction
     )
 
@@ -59,10 +75,7 @@ if api_key:
                         st.markdown(response.text)
                         st.session_state.messages.append({"role": "assistant", "content": response.text})
                 except Exception as e:
-                    if "429" in str(e):
-                        st.error("🚨 Limit hit! Thoda wait karo, system refresh ho raha hai.")
-                    else:
-                        st.error(f"Error: {e}")
+                    st.error(f"Nexus Error: {e}")
 
     # --- Mode 2: Visual Analysis ---
     elif mode == "Visual Analysis":
@@ -73,12 +86,13 @@ if api_key:
             st.image(image, caption='Target Source', use_container_width=True)
             if st.button("Initialize Scan ⚡"):
                 try:
-                    img_byte_arr = io.BytesIO()
-                    image.save(img_byte_arr, format=image.format)
-                    contents = ["Analyze this and provide a solution.", {'mime_type': uploaded_file.type, 'data': img_byte_arr.getvalue()}]
-                    response = model.generate_content(contents=contents)
-                    st.success(response.text)
+                    with st.spinner('Scanning...'):
+                        img_byte_arr = io.BytesIO()
+                        image.save(img_byte_arr, format=image.format)
+                        contents = ["Analyze this capture.", {'mime_type': uploaded_file.type, 'data': img_byte_arr.getvalue()}]
+                        response = model.generate_content(contents=contents)
+                        st.success(response.text)
                 except Exception as e:
                     st.error(f"Scan Failed: {e}")
 else:
-    st.warning("Nexus requires an API Key to initialize.")
+    st.warning("Nexus requires an API Key in Sidebar or Secrets.")
