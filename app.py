@@ -13,7 +13,7 @@ st.markdown("""
     """, unsafe_allow_html=True)
 
 st.title("🌐 NEXUS : The Intelligent Core")
-st.caption("🚀 High-Performance AI System | Developed by Abhishek")
+st.caption(" High-Performance AI System | Developed by Abhishek")
 
 # --- API Key Fetch ---
 if "GROQ_API_KEY" in st.secrets:
@@ -37,8 +37,8 @@ if api_key:
         st.sidebar.success("Status: Online 🟢")
         st.sidebar.markdown("---")
         st.sidebar.write("**Developer:** Abhishek")
-        st.sidebar.write("**OS Version:** 1.0 (Toofani)")
-        st.sidebar.info("Ye AI Groq LPU engine par chalta hai, jo duniya ka sabse fast AI processor hai.")
+        st.sidebar.write("**OS Version:** 1.0 (Smart  and unique)")
+        st.sidebar.info("Devloping by Abhishek")
 
         if "messages" not in st.session_state:
             st.session_state.messages = [{"role": "assistant", "content": "System Online. Main NEXUS hoon. Main aapki kya madad kar sakta hoon?"}]
