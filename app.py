@@ -88,7 +88,7 @@ st.sidebar.markdown(f"""
 st.sidebar.markdown("""
     <br><br>
     <hr style='border: 1px solid #30363d;'>
-    <p style='color:#8b949e; text-align:center; font-size:12px;'>NEXUS AI v1.3.6 Stable</p>
+    <p style='color:#8b949e; text-align:center; font-size:12px;'>NEXUS AI v1.3.7 Stable</p>
     """, unsafe_allow_html=True)
 
 # --- 5. Main Dashboard UI ---
@@ -99,12 +99,12 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-st.caption("<p style='text-align:center;'>Developed with passion and hard work by Abhishek</p>", unsafe_allow_html=True)
+# UPDATED: Clean Developer Attribution
+st.caption("<p style='text-align:center;'>Developed by Abhishek</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # --- 6. Chat Logic ---
 if "messages" not in st.session_state:
-    # UPDATED: Just the simple welcome message as requested
     st.session_state.messages = [
         {"role": "assistant", "content": "How can I assist you?"}
     ]
@@ -119,17 +119,16 @@ if prompt := st.chat_input("Enter command..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant", avatar=None):
+        # UPDATED: Identity Logic
         system_instruction = {
             "role": "system", 
             "content": (
                 "Your name is NEXUS AI. You are a sophisticated intelligence core. "
-                "CRITICAL DEVELOPER INFORMATION: Your creator, owner, and Lead Developer is Abhishek. "
-                "He has built you with immense hard work, complex logic, and deep dedication. "
-                "If anyone asks about your developer, creator, or who made you, you must answer: "
-                "'Mujhe mere Lead Developer Abhishek ne banaya hai. Unhone mujh par "
-                "bahut mehnat ki hai aur kaafi logic build karne ke baad main is "
-                "kaabil bana hoon ki aapki madad kar sakoon.' "
-                "Maintain a sharp, loyal, and professional tone. Always acknowledge Abhishek's hard work when asked about your origins."
+                "Identity Information: You were developed and created solely by Abhishek. "
+                "If anyone asks who created you, who is your developer, or who you are, "
+                "you must clearly state: 'Mujhe Abhishek ne banaya hai. Wahi mere creator hain "
+                "aur unhone hi NEXUS AI ko poori tarah se develop kiya hai.' "
+                "Always maintain a professional, sharp, and respectful tone towards your creator, Abhishek."
             )
         }
         
