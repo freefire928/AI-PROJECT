@@ -2,3 +2,8 @@ streamlit
 groq
 PyPDF2
 streamlit-mic-recorder
+tavily-python
+openai
+supabase
+matplotlib
+pandas
