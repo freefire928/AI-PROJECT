@@ -1,70 +1,91 @@
 import streamlit as st
 from groq import Groq
+import random
 
-# --- Page Config ---
-st.set_page_config(page_title="NEXUS | Abhishek OS", page_icon="🌐", layout="wide")
+# --- System Configuration ---
+st.set_page_config(
+    page_title="NEXUS AI | Core Interface",
+    page_icon="None",
+    layout="wide"
+)
 
-# Custom CSS for "Rola"
-st.markdown("""
-    <style>
-    .main { background-color: #0e1117; }
-    .stChatMessage { border-radius: 15px; }
-    </style>
-    """, unsafe_allow_html=True)
+# --- Core Engine Logic ---
+def execute_query(messages):
+    """
+    Handles API rotation and request execution.
+    """
+    api_pool = st.secrets.get("KEYS", [])
+    
+    # Shuffle pool to balance load across all 6 keys
+    active_pool = list(api_pool)
+    random.shuffle(active_pool)
+    
+    for key in active_pool:
+        try:
+            client = Groq(api_key=key)
+            completion = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=2048
+            )
+            return completion.choices[0].message.content
+        except Exception as e:
+            # Handle rate limiting by switching to the next available key
+            if "429" in str(e):
+                continue
+            else:
+                return f"Internal System Error: {str(e)}"
+    
+    return "Error: All processing cores are currently saturated. Retrying in 60 seconds."
 
-st.title("🌐 NEXUS : The Intelligent Core")
-st.caption(" High-Performance AI System | Developed by Abhishek")
+# --- Interface Layout ---
+st.title("NEXUS AI")
+st.subheader("High-Performance Intelligence Core")
+st.markdown("---")
 
-# --- API Key Fetch ---
-if "GROQ_API_KEY" in st.secrets:
-    api_key = st.secrets["GROQ_API_KEY"]
-else:
-    api_key = st.sidebar.text_input("Enter Groq API Key", type="password")
+# Sidebar Configuration
+st.sidebar.header("System Parameters")
+st.sidebar.text(f"Status: Operational")
+st.sidebar.text(f"Active Cores: {len(st.secrets.get('KEYS', []))}")
+st.sidebar.markdown("---")
+st.sidebar.write("Developed by: Abhishek")
+st.sidebar.write("Version: 1.1.0 (Stable)")
 
-if api_key:
-    try:
-        client = Groq(api_key=api_key)
+# Session State Initialization
+if "messages" not in st.session_state:
+    st.session_state.messages = [
+        {"role": "assistant", "content": "NEXUS AI system is online and stabilized. How may I assist you today?"}
+    ]
+
+# Render Message History
+for message in st.session_state.messages:
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+# User Input Handling
+if prompt := st.chat_input("Enter command..."):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
+
+    with st.chat_message("assistant"):
+        # System instructions for persona consistency
+        system_instruction = {
+            "role": "system", 
+            "content": (
+                "You are NEXUS AI, a sophisticated intelligence core developed by Abhishek. "
+                "Provide direct, factual, and high-quality responses. Maintain a professional tone. "
+                "Conclude every response with the identifier: NEXUS AI"
+            )
+        }
         
-        # NEXUS Persona
-        system_prompt = (
-            "Tumhara naam 'NEXUS' hai. Tum Abhishek OS ke Intelligent Core ho. "
-            "Tumhe Abhishek ne develop kiya hai. Tumhara tone futuristic, smart aur helpful hai. "
-            "Har jawab ke end mein 'NEXUS | Abhishek OS' likho."
-        )
-
-        # Sidebar with Developer Info
-        st.sidebar.title("System Info")
-        st.sidebar.success("Status: Online 🟢")
-        st.sidebar.markdown("---")
-        st.sidebar.write("**Developer:** Abhishek")
-        st.sidebar.write("**OS Version:** 1.0 (Smart  and unique)")
-        st.sidebar.info("Devloping by Abhishek")
-
-        if "messages" not in st.session_state:
-            st.session_state.messages = [{"role": "assistant", "content": "System Online. Main NEXUS hoon. Main aapki kya madad kar sakta hoon?"}]
-
-        for message in st.session_state.messages:
-            with st.chat_message(message["role"]):
-                st.markdown(message["content"])
-
-        if prompt := st.chat_input("Command bhejo..."):
-            st.session_state.messages.append({"role": "user", "content": prompt})
-            with st.chat_message("user"):
-                st.markdown(prompt)
-
-            with st.chat_message("assistant"):
-                try:
-                    chat_completion = client.chat.completions.create(
-                        messages=[{"role": "system", "content": system_prompt}] + 
-                                 [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages],
-                        model="llama-3.3-70b-versatile",
-                    )
-                    res_text = chat_completion.choices[0].message.content
-                    st.markdown(res_text)
-                    st.session_state.messages.append({"role": "assistant", "content": res_text})
-                except Exception as e:
-                    st.error(f"Sync Error: {e}")
-    except Exception as e:
-        st.error(f"Boot Error: {e}")
-else:
-    st.warning("Nexus is restricted. API Key required.")
+        # Construct full context
+        conversation_context = [system_instruction] + [
+            {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
+        ]
+        
+        with st.spinner("Processing request..."):
+            response_content = execute_query(conversation_context)
+            st.markdown(response_content)
+            st.session_state.messages.append({"role": "assistant", "content": response_content})
