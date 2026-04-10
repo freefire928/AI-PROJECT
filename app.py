@@ -2,37 +2,50 @@ import streamlit as st
 from groq import Groq
 import random
 
-# --- System Configuration ---
+# --- 1. System & Page Configuration ---
 st.set_page_config(
-    page_title="NEXUS AI",
+    page_title="NEXUS AI | Core",
     page_icon="🌐",
     layout="wide"
 )
 
-# Custom CSS for Professional Dark Theme
+# --- 2. Custom Professional Styling (CSS) ---
 st.markdown("""
     <style>
+    /* Dark Theme UI */
     .stApp {
         background-color: #0d1117;
         color: #c9d1d9;
     }
+    
+    /* Hide Chat Icons for Minimalist Look */
+    [data-testid="chatAvatarIcon-assistant"], 
+    [data-testid="chatAvatarIcon-user"] {
+        display: none !important;
+    }
+    
+    /* Input Field Styling */
     .stChatInput {
         background-color: #161b22;
         border: 1px solid #30363d;
         border-radius: 10px;
     }
+    
+    /* Sidebar (Control Panel) Decoration */
     .stSidebar {
         background-color: #161b22 !important;
         border-right: 1px solid #30363d;
     }
+    
+    /* Header Alignment */
     .centered-header {
         text-align: center;
-        margin-top: -40px;
+        margin-top: -50px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# --- Core Engine Logic ---
+# --- 3. Multi-Core Engine (API Rotation) ---
 def execute_query(messages):
     api_pool = st.secrets.get("KEYS", [])
     active_pool = list(api_pool)
@@ -49,42 +62,50 @@ def execute_query(messages):
             )
             return completion.choices[0].message.content
         except Exception as e:
-            if "429" in str(e):
+            if "429" in str(e): # Rate Limit Check
                 continue
             else:
-                return f"Internal System Error: {str(e)}"
+                return f"System Error: {str(e)}"
     
-    return "Error: System cores are saturated. Please retry."
+    return "Error: All processing cores are saturated. Please wait 60 seconds."
 
-# --- Sidebar: Control Panel ---
+# --- 4. Sidebar: Elite Control Panel ---
 st.sidebar.markdown("""
-    <h1 style='color:#00d2ff; text-align:center;'>NEXUS</h1>
-    <h3 style='color:#ffffff; text-align:center;'>CONTROL PANEL</h3>
+    <h1 style='color:#00d2ff; text-align:center; margin-bottom:0px;'>NEXUS</h1>
+    <h4 style='color:#ffffff; text-align:center; margin-top:0px;'>CONTROL PANEL</h4>
     <hr style='border: 1px solid #30363d;'>
     """, unsafe_allow_html=True)
 
 st.sidebar.markdown(f"""
     <div style='background-color:#0d1117; padding:15px; border-radius:10px; border: 1px solid #30363d;'>
-    <p style='color:#ffffff; margin-bottom:5px;'>⚙️ <b>Lead Developer:</b> Abhishek</p>
-    <p style='color:#ffffff; margin-bottom:5px;'>🛡️ <b>Security:</b> Alpha-Class</p>
-    <p style='color:#ffffff;'>🔗 <b>Active Cores:</b> {len(st.secrets.get('KEYS', []))}</p>
+    <p style='color:#ffffff; margin-bottom:8px;'>⚙️ <b>Lead Developer:</b> Abhishek</p>
+    <p style='color:#ffffff; margin-bottom:8px;'>🛡️ <b>Security:</b> Alpha-Class</p>
+    <p style='color:#ffffff; margin-bottom:8px;'>🔗 <b>Active Cores:</b> {len(st.secrets.get('KEYS', []))}</p>
+    <p style='color:#ffffff;'>📡 <b>Status:</b> Operational</p>
     </div>
     """, unsafe_allow_html=True)
 
-# --- Main Dashboard ---
+st.sidebar.markdown("""
+    <br><br>
+    <hr style='border: 1px solid #30363d;'>
+    <p style='color:#8b949e; text-align:center; font-size:12px;'>NEXUS AI v1.3.5 Stable</p>
+    """, unsafe_allow_html=True)
+
+# --- 5. Main Dashboard UI ---
 st.markdown("""
     <div class='centered-header'>
-        <h1 style='font-size: 70px; margin-bottom: 0px;'>🌐</h1>
-        <h1 style='margin-top: 10px;'>NEXUS AI</h1>
+        <h1 style='font-size: 80px; margin-bottom: 0px;'>🌐</h1>
+        <h1 style='margin-top: 10px; color:#ffffff;'>NEXUS AI</h1>
     </div>
     """, unsafe_allow_html=True)
 
-st.caption("<p style='text-align:center;'>Proprietary Intelligence System | Developed by Abhishek</p>", unsafe_allow_html=True)
+st.caption("<p style='text-align:center;'>Developed with passion and hard work by Abhishek</p>", unsafe_allow_html=True)
 st.markdown("---")
 
+# --- 6. Chat Logic ---
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "NEXUS AI system is online. How can I assist you?"}
+        {"role": "assistant", "content": "NEXUS AI system is online. Authorization granted. How can I assist you?"}
     ]
 
 for message in st.session_state.messages:
@@ -97,22 +118,26 @@ if prompt := st.chat_input("Enter command..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant", avatar=None):
+        # AI Identity & Developer Recognition Logic
         system_instruction = {
             "role": "system", 
             "content": (
                 "Your name is NEXUS AI. You are a sophisticated intelligence core. "
-                "Your creator and owner is Abhishek. If asked about your developer, "
-                "simply state that you were built and developed by Abhishek. "
-                "Maintain a professional and sharp tone. "
-                "Do not add any signatures at the end of your responses."
+                "DEVELOPER INFO: Your creator and Lead Developer is Abhishek. "
+                "Abhishek has built you with immense hard work, dedication, and complex logic. "
+                "If anyone asks about your developer or who made you, you must answer: "
+                "'Mujhe mere Lead Developer Abhishek ne banaya hai. Unhone mujh par "
+                "bahut mehnat ki hai aur kaafi logic build karne ke baad main is "
+                "kaabil bana hoon ki aapki madad kar sakoon.' "
+                "Always maintain a professional, sharp, and loyal tone towards Abhishek."
             )
         }
         
-        conversation_context = [system_instruction] + [
+        context = [system_instruction] + [
             {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
         ]
         
         with st.spinner("Processing..."):
-            response_content = execute_query(conversation_context)
+            response_content = execute_query(context)
             st.markdown(response_content)
             st.session_state.messages.append({"role": "assistant", "content": response_content})
