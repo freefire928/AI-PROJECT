@@ -4,19 +4,27 @@ import random
 
 # --- System Configuration ---
 st.set_page_config(
-    page_title="NEXUS AI | Core Interface",
+    page_title="NEXUS AI",
     page_icon="None",
     layout="wide"
 )
 
+# Custom CSS to hide the default robot/user icons (Avatars)
+st.markdown("""
+    <style>
+    [data-testid="chatAvatarIcon-assistant"], 
+    [data-testid="chatAvatarIcon-user"] {
+        display: none !important;
+    }
+    .stChatMessage {
+        padding-left: 0px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 # --- Core Engine Logic ---
 def execute_query(messages):
-    """
-    Handles API rotation and request execution.
-    """
     api_pool = st.secrets.get("KEYS", [])
-    
-    # Shuffle pool to balance load across all 6 keys
     active_pool = list(api_pool)
     random.shuffle(active_pool)
     
@@ -31,61 +39,60 @@ def execute_query(messages):
             )
             return completion.choices[0].message.content
         except Exception as e:
-            # Handle rate limiting by switching to the next available key
             if "429" in str(e):
                 continue
             else:
                 return f"Internal System Error: {str(e)}"
     
-    return "Error: All processing cores are currently saturated. Retrying in 60 seconds."
+    return "Error: System cores are saturated. Please retry."
 
-# --- Interface Layout ---
-st.title("NEXUS AI")
-st.subheader("High-Performance Intelligence Core")
-st.markdown("---")
-
-# Sidebar Configuration
-st.sidebar.header("System Parameters")
+# --- Sidebar: Clean Branding ---
+st.sidebar.markdown("### NEXUS CONTROL PANEL")
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Developed by:** Abhishek")
+st.sidebar.markdown("**System:** NEXUS AI Core")
+st.sidebar.markdown("---")
 st.sidebar.text(f"Status: Operational")
 st.sidebar.text(f"Active Cores: {len(st.secrets.get('KEYS', []))}")
-st.sidebar.markdown("---")
-st.sidebar.write("Developed by: Abhishek")
-st.sidebar.write("Version: 1.1.0 (Stable)")
 
-# Session State Initialization
+# --- Main Interface ---
+st.title("NEXUS AI")
+st.caption("Proprietary Intelligence System")
+st.markdown("---")
+
 if "messages" not in st.session_state:
     st.session_state.messages = [
-        {"role": "assistant", "content": "NEXUS AI system is online and stabilized. How may I assist you today?"}
+        {"role": "assistant", "content": "NEXUS AI system is online. How can I assist you?"}
     ]
 
-# Render Message History
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
+    # avatar=None se default logo hat jayega
+    with st.chat_message(message["role"], avatar=None):
         st.markdown(message["content"])
 
-# User Input Handling
 if prompt := st.chat_input("Enter command..."):
     st.session_state.messages.append({"role": "user", "content": prompt})
-    with st.chat_message("user"):
+    with st.chat_message("user", avatar=None):
         st.markdown(prompt)
 
-    with st.chat_message("assistant"):
-        # System instructions for persona consistency
+    with st.chat_message("assistant", avatar=None):
         system_instruction = {
             "role": "system", 
             "content": (
-                "You are NEXUS AI, a sophisticated intelligence core developed by Abhishek. "
-                "Provide direct, factual, and high-quality responses. Maintain a professional tone. "
-                "Conclude every response with the identifier: NEXUS AI"
+                "Your name is NEXUS AI. You are a sophisticated intelligence core. "
+                "Your creator and owner is Abhishek. If asked about your developer, "
+                "simply state that you were built and developed by Abhishek. "
+                "Do not mention any address or specific location. "
+                "Maintain a professional and sharp tone. "
+                "Do not add any repetitive footers or signatures at the end of your responses."
             )
         }
         
-        # Construct full context
         conversation_context = [system_instruction] + [
             {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
         ]
         
-        with st.spinner("Processing request..."):
+        with st.spinner("Processing..."):
             response_content = execute_query(conversation_context)
             st.markdown(response_content)
             st.session_state.messages.append({"role": "assistant", "content": response_content})
