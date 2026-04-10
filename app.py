@@ -5,28 +5,48 @@ from groq import Groq
 from PyPDF2 import PdfReader
 from supabase import create_client
 
-# --- 1. CONFIGURATION & MINIMALIST THEME ---
+# --- 1. SYSTEM CONFIG & SEXY UI (Custom CSS) ---
 st.set_page_config(page_title="NEXUS AI", page_icon="🌐", layout="wide")
 
 st.markdown("""
     <style>
-    .stApp { background-color: #0d1117; color: #c9d1d9; font-family: 'Inter', sans-serif; }
-    .stSidebar { background-color: #0d1117 !important; border-right: 1px solid #30363d; }
-    .stChatInput { background-color: #161b22; border: 1px solid #30363d; border-radius: 5px; }
+    /* Global Dark Theme */
+    .stApp { background-color: #0d1117; color: #c9d1d9; font-family: 'Segoe UI', Roboto, sans-serif; }
     
-    /* Remove default avatars */
-    [data-testid="chatAvatarIcon-assistant"], [data-testid="chatAvatarIcon-user"] { display: none !important; }
+    /* Sexy Sidebar (Control Panel) */
+    [data-testid="stSidebar"] {
+        background: linear-gradient(180deg, #0d1117 0%, #161b22 100%) !important;
+        border-right: 1px solid #30363d;
+        padding-top: 20px;
+    }
     
     /* Dashboard Header */
-    .nexus-title { text-align: center; color: #58a6ff; font-weight: 700; font-size: 3rem; margin-bottom: 0px; letter-spacing: 3px; }
-    .nexus-subtitle { text-align: center; color: #8b949e; font-size: 1.1rem; margin-top: -10px; margin-bottom: 30px; }
+    .nexus-title { 
+        text-align: center; color: #58a6ff; 
+        font-weight: 800; font-size: 3.5rem; 
+        margin-bottom: 0px; letter-spacing: 5px;
+        text-transform: uppercase;
+    }
+    .nexus-subtitle { 
+        text-align: center; color: #8b949e; 
+        font-size: 1.2rem; font-weight: 400;
+        margin-top: -10px; margin-bottom: 40px;
+        letter-spacing: 2px;
+    }
+
+    /* Input Field Styling */
+    .stChatInput { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; }
     
-    /* Sidebar styling */
-    .sidebar-brand { text-align: center; color: #58a6ff; font-weight: 600; font-size: 1.5rem; }
+    /* Remove Avatars */
+    [data-testid="chatAvatarIcon-assistant"], [data-testid="chatAvatarIcon-user"] { display: none !important; }
+    
+    /* Sidebar Widgets */
+    .sidebar-header { color: #58a6ff; font-weight: 700; font-size: 1.5rem; text-align: center; margin-bottom: 20px; }
+    .status-online { color: #238636; font-size: 0.9rem; text-align: center; margin-bottom: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. INITIALIZE SERVICES ---
+# --- 2. INITIALIZE CORES ---
 def init_system():
     try:
         S_URL = st.secrets["SUPABASE_URL"]
@@ -34,8 +54,10 @@ def init_system():
         G_KEYS = st.secrets["KEYS"]
         
         db = create_client(S_URL, S_KEY)
+        # 6-Key Load Balancing
         ai_engine = Groq(api_key=random.choice(G_KEYS))
         
+        # Tools
         search_tool = None
         if "TAVILY_API_KEY" in st.secrets:
             from tavily import TavilyClient
@@ -53,7 +75,7 @@ def init_system():
 
 supabase, groq_client, tavily, openai = init_system()
 
-# --- 3. CLOUD MEMORY LOGIC ---
+# --- 3. CORE LOGIC ---
 def sync_load(email):
     try:
         response = supabase.table('nexus_memory').select("history").eq("id", email).execute()
@@ -69,76 +91,83 @@ def read_document(file):
     try:
         pdf = PdfReader(file)
         return " ".join([page.extract_text() for page in pdf.pages])
-    except: return "Error processing document."
+    except: return "Document Error."
 
-# --- 4. SIDEBAR: AUTHENTICATION & TOOLS ---
-st.sidebar.markdown("<p class='sidebar-brand'>🌐 NEXUS AI</p>", unsafe_allow_html=True)
+# --- 4. CONTROL PANEL (Sidebar) ---
+st.sidebar.markdown("<p class='sidebar-header'>🌐 NEXUS CONTROL</p>", unsafe_allow_html=True)
+st.sidebar.markdown("<p class='status-online'>SYSTEM ONLINE</p>", unsafe_allow_html=True)
 st.sidebar.markdown("---")
 
-user_identity = st.sidebar.text_input("Gmail Login", placeholder="email@gmail.com")
+# Secure Login
+user_identity = st.sidebar.text_input(" ACCESS KEY (GMAIL)", placeholder="user@gmail.com")
 
 if user_identity:
     if "session_id" not in st.session_state or st.session_state.session_id != user_identity:
-        data = sync_load(user_identity)
-        st.session_state.messages = data if data else [{"role": "assistant", "content": f"Nexus System Active: {user_identity}"}]
-        st.session_state.session_id = user_identity
-    st.sidebar.success("Cloud Memory Synced")
+        with st.spinner("Syncing Cloud Memory..."):
+            data = sync_load(user_identity)
+            st.session_state.messages = data if data else [{"role": "assistant", "content": f"Nexus Authorized: {user_identity}"}]
+            st.session_state.session_id = user_identity
+        st.sidebar.success("Memory Linked")
 else:
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "Authentication required for persistent session."}]
+        st.session_state.messages = [{"role": "assistant", "content": "Authentication required."}]
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("Tools")
-doc_file = st.sidebar.file_uploader("Attach PDF", type=['pdf'])
+doc_file = st.sidebar.file_uploader("Document Analysis (PDF)", type=['pdf'])
 
-# --- 5. MAIN DASHBOARD ---
+st.sidebar.markdown("---")
+st.sidebar.markdown("<p style='text-align:center; color:#8b949e; font-size:0.8rem;'>Lead Developer: Abhishek</p>", unsafe_allow_html=True)
+
+# --- 5. DASHBOARD ---
 st.markdown("<h1 class='nexus-title'>NEXUS AI</h1>", unsafe_allow_html=True)
 st.markdown("<p class='nexus-subtitle'>Developed by Abhishek</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# Render Conversation
+# Render Logs
 for m in st.session_state.messages:
     with st.chat_message(m["role"]):
         st.markdown(m["content"])
 
-# --- 6. CORE INTELLIGENCE ---
-if query := st.chat_input("Enter Command"):
+# --- 6. INTELLIGENCE ENGINE ---
+if query := st.chat_input("Enter Command..."):
     st.session_state.messages.append({"role": "user", "content": query})
     with st.chat_message("user"):
         st.markdown(query)
 
     with st.chat_message("assistant"):
-        # Document Injection
-        context_data = ""
+        # Context Injection
+        context = ""
         if doc_file:
-            context_data = f"\n[User Document Context]: {read_document(doc_file)[:1500]}"
+            context = f"\n[Doc Context]: {read_document(doc_file)[:1500]}"
             
-        # Web Search
+        # Tool: Web Search
         if ("search" in query.lower() or "online" in query.lower()) and tavily:
-            with st.spinner("Searching Web"):
+            with st.spinner("Accessing Global Intel"):
                 web_raw = tavily.search(query=query)
                 web_info = "\n".join([f"- {r['content']}" for r in web_raw['results']])
-                query += f"\n\n[Web Data Found]: {web_info}"
+                query += f"\n\n[Web Data]: {web_info}"
 
-        # Vision Generation
+        # Tool: Vision Gen
         if "generate image" in query.lower() and openai:
-            with st.spinner("Rendering Vision"):
+            with st.spinner("Processing Vision Engine"):
                 url = openai.images.generate(model="dall-e-3", prompt=query).data[0].url
                 st.image(url)
                 st.session_state.messages.append({"role": "assistant", "content": f"Vision Resource: {url}"})
 
-        # Final AI Response with Developer Identity
+        # Identity & Precision Logic
         system_logic = (
-            "You are NEXUS AI. You were developed by Abhishek. "
-            "Abhishek is a Software Developer and Data Science student. "
-            "Skills of Abhishek: Python expert, AI application developer, Linux (Ubuntu/Abhishek OS) specialist, and Data Science expert. "
-            "Task: Provide high-precision workstation responses without extra emojis. "
-            f"{context_data}"
+            "Identity: NEXUS AI. "
+            "Developer: Abhishek. "
+            "Abhishek Profile: Software Developer, Data Science Student, Python Expert, AI Architect. "
+            "Skills: Expert in LLM orchestration, Linux systems, and automation. "
+            "Response Protocol: High-precision, zero emojis (except 🌐), strictly professional. "
+            f"{context}"
         )
         
         history_chain = [{"role": "system", "content": system_logic}] + st.session_state.messages
         
-        with st.spinner("Processing"):
+        with st.spinner(""):
             if groq_client:
                 result = groq_client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
@@ -151,5 +180,3 @@ if query := st.chat_input("Enter Command"):
                 
                 if user_identity:
                     sync_save(user_identity, st.session_state.messages)
-            else:
-                st.error("System Offline")
