@@ -12,32 +12,23 @@ st.set_page_config(
 # --- 2. Custom Professional Styling (CSS) ---
 st.markdown("""
     <style>
-    /* Dark Theme UI */
     .stApp {
         background-color: #0d1117;
         color: #c9d1d9;
     }
-    
-    /* Hide Chat Icons for Minimalist Look */
     [data-testid="chatAvatarIcon-assistant"], 
     [data-testid="chatAvatarIcon-user"] {
         display: none !important;
     }
-    
-    /* Input Field Styling */
     .stChatInput {
         background-color: #161b22;
         border: 1px solid #30363d;
         border-radius: 10px;
     }
-    
-    /* Professional Sidebar Styling */
     .stSidebar {
         background-color: #161b22 !important;
         border-right: 1px solid #30363d;
     }
-    
-    /* Header Alignment */
     .centered-header {
         text-align: center;
         margin-top: -50px;
@@ -67,7 +58,7 @@ def execute_query(messages):
             else:
                 return f"System Error: {str(e)}"
     
-    return "Error: All processing cores are saturated. Please wait 60 seconds."
+    return "Error: All processing cores are saturated."
 
 # --- 4. Sidebar: Control Panel ---
 st.sidebar.markdown("""
@@ -81,14 +72,7 @@ st.sidebar.markdown(f"""
     <p style='color:#ffffff; margin-bottom:8px;'>⚙️ <b>Lead Developer:</b> Abhishek</p>
     <p style='color:#ffffff; margin-bottom:8px;'>🛡️ <b>Security:</b> Alpha-Class</p>
     <p style='color:#ffffff; margin-bottom:8px;'>🔗 <b>Active Cores:</b> {len(st.secrets.get('KEYS', []))}</p>
-    <p style='color:#ffffff;'>📡 <b>Status:</b> Operational</p>
     </div>
-    """, unsafe_allow_html=True)
-
-st.sidebar.markdown("""
-    <br><br>
-    <hr style='border: 1px solid #30363d;'>
-    <p style='color:#8b949e; text-align:center; font-size:12px;'>NEXUS AI v1.3.7 Stable</p>
     """, unsafe_allow_html=True)
 
 # --- 5. Main Dashboard UI ---
@@ -99,15 +83,12 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# UPDATED: Clean Developer Attribution
 st.caption("<p style='text-align:center;'>Developed by Abhishek</p>", unsafe_allow_html=True)
 st.markdown("---")
 
 # --- 6. Chat Logic ---
 if "messages" not in st.session_state:
-    st.session_state.messages = [
-        {"role": "assistant", "content": "How can I assist you?"}
-    ]
+    st.session_state.messages = [{"role": "assistant", "content": "How can I assist you?"}]
 
 for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar=None):
@@ -119,22 +100,23 @@ if prompt := st.chat_input("Enter command..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant", avatar=None):
-        # UPDATED: Identity Logic
+        # YAHAN HAI POORA SKILLS AUR IDENTITY KA LOGIC
         system_instruction = {
             "role": "system", 
             "content": (
-                "Your name is NEXUS AI. You are a sophisticated intelligence core. "
-                "Identity Information: You were developed and created solely by Abhishek. "
-                "If anyone asks who created you, who is your developer, or who you are, "
-                "you must clearly state: 'Mujhe Abhishek ne banaya hai. Wahi mere creator hain "
-                "aur unhone hi NEXUS AI ko poori tarah se develop kiya hai.' "
-                "Always maintain a professional, sharp, and respectful tone towards your creator, Abhishek."
+                "Your name is NEXUS AI. You are a sophisticated intelligence core created by Abhishek. "
+                "CRITICAL KNOWLEDGE ABOUT YOUR DEVELOPER (ABHISHEK): "
+                "1. Abhishek is a Software Developer and a Data Science student. "
+                "2. He is an expert in Python programming, AI development, and building custom OS interfaces. "
+                "3. He has built you (NEXUS AI) and other projects like NEXUS AI APK and Aura-LM. "
+                "4. If anyone asks 'Who created you?', 'Who is Abhishek?', or 'What are his skills?', you must answer: "
+                "'Mujhe Abhishek ne banaya hai. Wahi mere Lead Developer hain. Abhishek ek skilled Software Developer aur Data Science student hain. "
+                "Unhone Python, AI, aur Application development mein apni expertise ka use karke mujhe (NEXUS AI) build kiya hai.' "
+                "Maintain a professional and loyal tone. Mention his skills ONLY when someone asks about him or your origins."
             )
         }
         
-        context = [system_instruction] + [
-            {"role": m["role"], "content": m["content"]} for m in st.session_state.messages
-        ]
+        context = [system_instruction] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
         
         with st.spinner("Processing..."):
             response_content = execute_query(context)
