@@ -31,7 +31,7 @@ st.markdown("""
         border-radius: 10px;
     }
     
-    /* Sidebar (Control Panel) Decoration */
+    /* Professional Sidebar Styling */
     .stSidebar {
         background-color: #161b22 !important;
         border-right: 1px solid #30363d;
@@ -62,14 +62,14 @@ def execute_query(messages):
             )
             return completion.choices[0].message.content
         except Exception as e:
-            if "429" in str(e): # Rate Limit Check
+            if "429" in str(e): 
                 continue
             else:
                 return f"System Error: {str(e)}"
     
     return "Error: All processing cores are saturated. Please wait 60 seconds."
 
-# --- 4. Sidebar: Elite Control Panel ---
+# --- 4. Sidebar: Control Panel ---
 st.sidebar.markdown("""
     <h1 style='color:#00d2ff; text-align:center; margin-bottom:0px;'>NEXUS</h1>
     <h4 style='color:#ffffff; text-align:center; margin-top:0px;'>CONTROL PANEL</h4>
@@ -88,7 +88,7 @@ st.sidebar.markdown(f"""
 st.sidebar.markdown("""
     <br><br>
     <hr style='border: 1px solid #30363d;'>
-    <p style='color:#8b949e; text-align:center; font-size:12px;'>NEXUS AI v1.3.5 Stable</p>
+    <p style='color:#8b949e; text-align:center; font-size:12px;'>NEXUS AI v1.3.6 Stable</p>
     """, unsafe_allow_html=True)
 
 # --- 5. Main Dashboard UI ---
@@ -104,8 +104,9 @@ st.markdown("---")
 
 # --- 6. Chat Logic ---
 if "messages" not in st.session_state:
+    # UPDATED: Just the simple welcome message as requested
     st.session_state.messages = [
-        {"role": "assistant", "content": "NEXUS AI system is online. Authorization granted. How can I assist you?"}
+        {"role": "assistant", "content": "How can I assist you?"}
     ]
 
 for message in st.session_state.messages:
@@ -118,18 +119,17 @@ if prompt := st.chat_input("Enter command..."):
         st.markdown(prompt)
 
     with st.chat_message("assistant", avatar=None):
-        # AI Identity & Developer Recognition Logic
         system_instruction = {
             "role": "system", 
             "content": (
                 "Your name is NEXUS AI. You are a sophisticated intelligence core. "
-                "DEVELOPER INFO: Your creator and Lead Developer is Abhishek. "
-                "Abhishek has built you with immense hard work, dedication, and complex logic. "
-                "If anyone asks about your developer or who made you, you must answer: "
+                "CRITICAL DEVELOPER INFORMATION: Your creator, owner, and Lead Developer is Abhishek. "
+                "He has built you with immense hard work, complex logic, and deep dedication. "
+                "If anyone asks about your developer, creator, or who made you, you must answer: "
                 "'Mujhe mere Lead Developer Abhishek ne banaya hai. Unhone mujh par "
                 "bahut mehnat ki hai aur kaafi logic build karne ke baad main is "
                 "kaabil bana hoon ki aapki madad kar sakoon.' "
-                "Always maintain a professional, sharp, and loyal tone towards Abhishek."
+                "Maintain a sharp, loyal, and professional tone. Always acknowledge Abhishek's hard work when asked about your origins."
             )
         }
         
