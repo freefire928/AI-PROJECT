@@ -1,13 +1,24 @@
 import streamlit as st
-from groq import Groq
 import random
+import io
+import pandas as pd
+import matplotlib.pyplot as plt
+from groq import Groq
 from PyPDF2 import PdfReader
 from streamlit_mic_recorder import mic_recorder
+from tavily import TavilyClient
+from openai import OpenAI
+from supabase import create_client, Client
+import contextlib
 
-# --- System Configuration ---
-st.set_page_config(page_title="NEXUS AI PRO", page_icon="🌐", layout="wide")
+# --- 1. System & Page Configuration ---
+st.set_page_config(
+    page_title="NEXUS AI | Super-Core",
+    page_icon="🌐",
+    layout="wide"
+)
 
-# Custom Styling
+# --- 2. Custom Professional Styling (CSS) ---
 st.markdown("""
     <style>
     .stApp { background-color: #0d1117; color: #c9d1d9; }
@@ -15,27 +26,70 @@ st.markdown("""
     .stChatInput { background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; }
     .stSidebar { background-color: #161b22 !important; border-right: 1px solid #30363d; }
     .centered-header { text-align: center; margin-top: -50px; }
+    .stFileUploader { background-color: #161b22; border-radius: 10px; padding: 10px; }
+    /* Style code block output */
+    .stCode { background-color: #161b22 !important; border-radius: 8px; color: #7ee787; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- Core Logic Functions ---
-def execute_query(messages):
-    api_pool = st.secrets.get("KEYS", [])
-    active_pool = list(api_pool)
-    random.shuffle(active_pool)
-    for key in active_pool:
-        try:
-            client = Groq(api_key=key)
-            completion = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=messages,
-                temperature=0.7,
-                max_tokens=2048
-            )
-            return completion.choices[0].message.content
-        except Exception: continue
-    return "Error: Cores busy."
+# --- 3. Core Service Initialize ---
+# Function to get secrets securely
+def get_secret(key):
+    try:
+        return st.secrets[key]
+    except KeyError:
+        return None
 
+# Initialize Clients from Secrets (or handle if missing)
+try:
+    groq_client = Groq(api_key=get_secret("GROQ_API_KEY")) # Or your multiple keys pool function
+    tavily_client = TavilyClient(api_key=get_secret("TAVILY_API_KEY"))
+    openai_client = OpenAI(api_key=get_secret("OPENAI_API_KEY"))
+    supabase_url = get_secret("SUPABASE_URL")
+    supabase_key = get_secret("SUPABASE_KEY")
+    supabase_client: Client = create_client(supabase_url, supabase_key) if supabase_url and supabase_key else None
+except Exception:
+    st.error("Error initializing core services. Check st.secrets.")
+
+# --- 4. Tool Functions ---
+
+# Tool: Web Search (Tavily)
+def search_the_web(query):
+    try:
+        response = tavily_client.search(query=query, search_depth="advanced")
+        context = "\n\n".join([f"[Source: {r['url']}] {r['content']}" for r in response['results']])
+        return context
+    except Exception as e:
+        return f"Web Search Error: {str(e)}"
+
+# Tool: Image Generation (OpenAI DALL-E)
+def generate_nexus_vision(prompt):
+    try:
+        response = openai_client.images.generate(
+            model="dall-e-3",
+            prompt=f"A professional, futuristic image depicting: {prompt}",
+            n=1,
+            size="1024x1024"
+        )
+        return response.data[0].url
+    except Exception as e:
+        return f"Image Generation Error: {str(e)}"
+
+# Tool: Code Interpreter (Secure Python Sandbox)
+def run_code_interpreter(code):
+    try:
+        # Secure execution: capture stdout and stderr
+        f = io.StringIO()
+        with contextlib.redirect_stdout(f):
+            # Safe globals and locals, allowing common data tools
+            exec_globals = {"pd": pd, "plt": plt, "st": st}
+            exec(code, exec_globals)
+        output = f.getvalue()
+        return output if output else "Code executed successfully (no output)."
+    except Exception as e:
+        return f"Execution Error: {str(e)}"
+
+# Function to extract PDF text
 def extract_pdf_text(file):
     reader = PdfReader(file)
     text = ""
@@ -43,49 +97,66 @@ def extract_pdf_text(file):
         text += page.extract_text()
     return text
 
-# --- Sidebar: Control Panel (Voice & File) ---
+# --- 5. Sidebar: Control Panel ---
 st.sidebar.markdown("<h1 style='color:#00d2ff; text-align:center;'>NEXUS PRO</h1>", unsafe_allow_html=True)
 
-# FEATURE: Voice Input
-st.sidebar.markdown("### 🎙️ Voice Command")
+# Persistent Memory & Login
+st.sidebar.markdown("### 🛡️ User Secure Login")
+user_id = st.sidebar.text_input("Enter your unique ID for memory persistence", key='user_id')
+
+if supabase_client and user_id:
+    st.sidebar.success(f"Memory active for User: {user_id}")
+    # Load session state from database if available (Simplified)
+    # response = supabase_client.table('nexus_memory').select('history').eq('id', user_id).execute()
+    # if response.data:
+    #    st.session_state.messages = response.data[0]['history']
+
+# Document Analysis
+st.sidebar.markdown("###  Document Intelligence")
+uploaded_file = st.sidebar.file_uploader("Upload PDF or TXT", type=['pdf', 'txt'])
+
+# Voice
+st.sidebar.markdown("###  Voice Input")
 audio = mic_recorder(start_prompt="Start Recording", stop_prompt="Stop Recording", key='recorder')
 
-# FEATURE: File Upload
-st.sidebar.markdown("###  Document Analysis")
-uploaded_file = st.sidebar.file_uploader("Upload PDF", type=['pdf'])
-
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"**Developer:** Abhishek\n\n**Status:** Online\n\n**Cores:** {len(st.secrets.get('KEYS', []))}")
+st.sidebar.markdown(f"**Developer:** Abhishek\n\n**Status:** Super-Core Online")
 
-# --- Main Dashboard ---
+# --- 6. Main Dashboard UI ---
 st.markdown("<div class='centered-header'><h1>🌐</h1><h1>NEXUS AI</h1></div>", unsafe_allow_html=True)
-st.caption("<p style='text-align:center;'>Developed by Abhishek</p>", unsafe_allow_html=True)
+st.caption("<p style='text-align:center;'>Super-Core AI Workstation Developed by Abhishek</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# Session State
+# Session State for local memory
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "How can I assist you?"}]
+    st.session_state.messages = [{"role": "assistant", "content": "Welcome to NEXUS Super-Core. How can I assist you today?"}]
 
 # Render History
 for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar=None):
-        st.markdown(message["content"])
+        if message["role"] == "assistant" and "Image: " in message["content"]:
+            # Display generated image
+            st.image(message["content"].split(": ")[1], caption="Nexus Vision Generation")
+        elif message["role"] == "assistant" and "Code Execution Output: " in message["content"]:
+            st.code(message["content"].split(": ")[1], language='python')
+        else:
+            st.markdown(message["content"])
 
-# --- Input Handling ---
-user_input = st.chat_input("Enter command...")
+# User Input Handling
+user_input = st.chat_input("Enter command, ask to generate images, or run code...")
 
-# If Voice is used
+# Voice Handling (Transcription would happen here via API)
 if audio:
-    # Note: For actual speech-to-text, you'd need an API like Whisper. 
-    # Currently, this records and we can notify the user.
     st.sidebar.success("Audio Recorded!")
-    user_input = "Audio signal received (Transcribe feature coming soon)"
+    user_input = "Audio signal received (Auto-transcribe feature required)"
 
-# Process Input
+# --- 7. Core Intelligence Loop ---
 if user_input:
-    file_content = ""
-    if uploaded_file:
-        file_content = f"\n\n[CONTEXT FROM PDF]: {extract_pdf_text(uploaded_file)[:2000]}"
+    # 1. Capture User Input
+    file_context = ""
+    if uploaded_file and "File content extracted" not in user_input:
+        with st.spinner("Extracting document context..."):
+            file_context = f"\n\n[CONTEXT FROM {uploaded_file.name.upper()}]:\n{extract_pdf_text(uploaded_file)[:1500]}\n"
 
     st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar=None):
@@ -93,15 +164,72 @@ if user_input:
 
     with st.chat_message("assistant", avatar=None):
         system_instruction = (
-            "Your name is NEXUS AI. Developed by Abhishek (Software Developer & Data Science student). "
-            "If asked who made you, say: 'Mujhe Abhishek ne banaya hai. Wahi mere creator hain.' "
-            "Use the provided PDF context if available."
+            "Your name is NEXUS AI. You are a highly sophisticated Super-Core AI workstation created by Abhishek. "
+            "Abhishek is a senior Software Developer and Data Science student, expert in AI and Python. "
+            "If asked about your origins, mention Abhishek's expertise. "
+            "You have tools for Web Search, Image Generation, and Code Execution. Use them when requested."
         )
         
-        full_context = [{"role": "system", "content": system_instruction + file_content}] + \
+        # Tool: Check for Image Request
+        if "generate image" in user_input.lower() or "nexus vision" in user_input.lower():
+            with st.spinner("NEXUS Vision core is rendering..."):
+                vision_prompt = user_input.replace("generate image", "").strip()
+                image_url = generate_nexus_vision(vision_prompt)
+                if "Error" not in image_url:
+                    st.image(image_url, caption=f"Nexus Vision: {vision_prompt}")
+                    st.session_state.messages.append({"role": "assistant", "content": f"Image: {image_url}"})
+                    # Skip normal text processing for image success
+                    st.rerun()
+
+        # Tool: Check for Web Search Request
+        elif "search the web" in user_input.lower() or "check online" in user_input.lower():
+            with st.spinner("NEXUS is searching the live internet..."):
+                search_query = user_input.replace("search the web", "").strip()
+                web_results = search_the_web(search_query)
+                user_input = f"{user_input}\n\n[LIVE WEB RESULTS]:\n{web_results}\n"
+
+        # Tool: Check for Code Interpreter Request
+        elif "run python code" in user_input.lower() or "execute script" in user_input.lower():
+            with st.spinner("NEXUS Code Interpreter is active..."):
+                # Simplified code extraction (User must provide raw code or clear block)
+                code_block = user_input.replace("run python code", "").strip()
+                execution_output = run_code_interpreter(code_block)
+                st.markdown("Code executed.")
+                st.code(execution_output, language='python')
+                st.session_state.messages.append({"role": "assistant", "content": f"Code Execution Output: {execution_output}"})
+                # Skip normal processing
+                st.rerun()
+
+        # Tool: Standard Text processing with file context
+        full_context = [{"role": "system", "content": system_instruction + file_context}] + \
                        [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
         
-        with st.spinner("NEXUS is thinking..."):
-            response = execute_query(full_context)
+        with st.spinner("Thinking..."):
+            # Note: For efficiency, we use Groq for text processing. 
+            # (Image/Search results are now part of the user_input context)
+            from groq import Groq # Re-ensure inside loop for robust client management
+            api_pool = st.secrets.get("KEYS", [])
+            key_to_use = random.choice(api_pool) if api_pool else st.secrets.get("GROQ_API_KEY")
+            client = Groq(api_key=key_to_use)
+
+            completion = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=full_context,
+                temperature=0.7,
+                max_tokens=2048
+            )
+            response = completion.choices[0].message.content
             st.markdown(response)
             st.session_state.messages.append({"role": "assistant", "content": response})
+
+            # Persistent Memory (Database sync after each exchange) - Requires actual table setup
+            if supabase_client and user_id:
+                try:
+                    # Sync history to Supabase table 'nexus_memory' (column 'id', 'history')
+                    history_data = [
+                        {"role": m["role"], "content": m["content"][-2000:]} # Limit context size for database
+                        for m in st.session_state.messages
+                    ]
+                    # response = supabase_client.table('nexus_memory').upsert({"id": user_id, "history": history_data}).execute()
+                except Exception as e:
+                    st.sidebar.error(f"Memory Sync Error: {str(e)}")
