@@ -1,16 +1,13 @@
 import streamlit as st
 from groq import Groq
 import random
-import io
+from PyPDF2 import PdfReader
+from streamlit_mic_recorder import mic_recorder
 
-# --- 1. System & Page Configuration ---
-st.set_page_config(
-    page_title="NEXUS AI | Pro",
-    page_icon="🌐",
-    layout="wide"
-)
+# --- System Configuration ---
+st.set_page_config(page_title="NEXUS AI PRO", page_icon="🌐", layout="wide")
 
-# --- 2. Custom Professional Styling (CSS) ---
+# Custom Styling
 st.markdown("""
     <style>
     .stApp { background-color: #0d1117; color: #c9d1d9; }
@@ -18,11 +15,10 @@ st.markdown("""
     .stChatInput { background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; }
     .stSidebar { background-color: #161b22 !important; border-right: 1px solid #30363d; }
     .centered-header { text-align: center; margin-top: -50px; }
-    .stFileUploader { background-color: #161b22; border-radius: 10px; padding: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. Multi-Core Engine ---
+# --- Core Logic Functions ---
 def execute_query(messages):
     api_pool = st.secrets.get("KEYS", [])
     active_pool = list(api_pool)
@@ -37,75 +33,75 @@ def execute_query(messages):
                 max_tokens=2048
             )
             return completion.choices[0].message.content
-        except Exception as e:
-            if "429" in str(e): continue
-            else: return f"System Error: {str(e)}"
-    return "Error: All processing cores are saturated."
+        except Exception: continue
+    return "Error: Cores busy."
 
-# --- 4. Sidebar: Advanced Control Panel ---
+def extract_pdf_text(file):
+    reader = PdfReader(file)
+    text = ""
+    for page in reader.pages:
+        text += page.extract_text()
+    return text
+
+# --- Sidebar: Control Panel (Voice & File) ---
 st.sidebar.markdown("<h1 style='color:#00d2ff; text-align:center;'>NEXUS PRO</h1>", unsafe_allow_html=True)
 
-# Feature 1: File Uploader in Sidebar
-st.sidebar.markdown("###  Document Intelligence")
-uploaded_file = st.sidebar.file_uploader("Upload PDF or Text for Analysis", type=['pdf', 'txt'])
+# FEATURE: Voice Input
+st.sidebar.markdown("### 🎙️ Voice Command")
+audio = mic_recorder(start_prompt="Start Recording", stop_prompt="Stop Recording", key='recorder')
+
+# FEATURE: File Upload
+st.sidebar.markdown("###  Document Analysis")
+uploaded_file = st.sidebar.file_uploader("Upload PDF", type=['pdf'])
 
 st.sidebar.markdown("---")
-st.sidebar.markdown(f"""
-    <div style='background-color:#0d1117; padding:15px; border-radius:10px; border: 1px solid #30363d;'>
-    <p style='color:#ffffff; margin-bottom:8px;'>⚙️ <b>Lead Developer:</b> Abhishek</p>
-    <p style='color:#ffffff; margin-bottom:8px;'>🛡️ <b>Mode:</b> Advanced (Multi-Feature)</p>
-    <p style='color:#ffffff;'>🔗 <b>Active Cores:</b> {len(st.secrets.get('KEYS', []))}</p>
-    </div>
-    """, unsafe_allow_html=True)
+st.sidebar.markdown(f"**Developer:** Abhishek\n\n**Status:** Online\n\n**Cores:** {len(st.secrets.get('KEYS', []))}")
 
-# --- 5. Main Dashboard UI ---
+# --- Main Dashboard ---
 st.markdown("<div class='centered-header'><h1>🌐</h1><h1>NEXUS AI</h1></div>", unsafe_allow_html=True)
 st.caption("<p style='text-align:center;'>Developed by Abhishek</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# --- 6. Chat Logic ---
+# Session State
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "How can I assist you today?"}]
+    st.session_state.messages = [{"role": "assistant", "content": "How can I assist you?"}]
 
-# Render Chat History
+# Render History
 for message in st.session_state.messages:
     with st.chat_message(message["role"], avatar=None):
         st.markdown(message["content"])
 
-# User Input
-if prompt := st.chat_input("Ask anything or generate images..."):
-    # Identity & Skill Knowledge
-    system_instruction = (
-        "Your name is NEXUS AI. You are a sophisticated intelligence core created by Abhishek. "
-        "Abhishek is a Software Developer and Data Science student expert in Python and AI. "
-        "If asked about your creator, explain his skills and that he developed you. "
-        "If the user asks to 'Generate an image of...', respond creatively and acknowledge the request."
-    )
+# --- Input Handling ---
+user_input = st.chat_input("Enter command...")
 
-    # Adding context if a file is uploaded
-    file_context = ""
-    if uploaded_file is not None:
-        file_context = f"\n[Document Content]: The user has uploaded a file named {uploaded_file.name}. Assist them based on its context."
+# If Voice is used
+if audio:
+    # Note: For actual speech-to-text, you'd need an API like Whisper. 
+    # Currently, this records and we can notify the user.
+    st.sidebar.success("Audio Recorded!")
+    user_input = "Audio signal received (Transcribe feature coming soon)"
 
-    st.session_state.messages.append({"role": "user", "content": prompt})
+# Process Input
+if user_input:
+    file_content = ""
+    if uploaded_file:
+        file_content = f"\n\n[CONTEXT FROM PDF]: {extract_pdf_text(uploaded_file)[:2000]}"
+
+    st.session_state.messages.append({"role": "user", "content": user_input})
     with st.chat_message("user", avatar=None):
-        st.markdown(prompt)
+        st.markdown(user_input)
 
     with st.chat_message("assistant", avatar=None):
-        # Image Generation Feature (Trigger)
-        if "generate image" in prompt.lower() or "make a photo" in prompt.lower():
-            with st.spinner("Generating Nexus Vision..."):
-                # Yahan hum Image Tool ka use kar sakte hain
-                st.markdown(f"Generating image for: *{prompt}*")
-                # Note: Streamlit cloud par image gen ke liye API call lagti hai
-                st.info("Nexus Vision Core is preparing the render... [Image Generation active]")
+        system_instruction = (
+            "Your name is NEXUS AI. Developed by Abhishek (Software Developer & Data Science student). "
+            "If asked who made you, say: 'Mujhe Abhishek ne banaya hai. Wahi mere creator hain.' "
+            "Use the provided PDF context if available."
+        )
         
-        # Standard Text/File Processing
-        full_prompt = [
-            {"role": "system", "content": system_instruction + file_context}
-        ] + [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
-
-        with st.spinner("Analyzing..."):
-            response_content = execute_query(full_prompt)
-            st.markdown(response_content)
-            st.session_state.messages.append({"role": "assistant", "content": response_content})
+        full_context = [{"role": "system", "content": system_instruction + file_content}] + \
+                       [{"role": m["role"], "content": m["content"]} for m in st.session_state.messages]
+        
+        with st.spinner("NEXUS is thinking..."):
+            response = execute_query(full_context)
+            st.markdown(response)
+            st.session_state.messages.append({"role": "assistant", "content": response})
